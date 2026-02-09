@@ -22,7 +22,6 @@
       plugins: [
       function(hook, vm) {
         hook.ready(function() {
-          // Добавляем дату в сайдбар или куда нужно
           const dateEl = document.querySelector('#global-date');
           if (dateEl) {
             dateEl.innerHTML = new Date().toLocaleDateString('ru-RU', {
