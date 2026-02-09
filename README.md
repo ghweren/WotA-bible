@@ -4,16 +4,16 @@
 
 ## Навигация
 
-- [1. Концепция и ядро игры](docs/concept/README.md)
-- [2. Вселенная и сеттинг](docs/lore/README.md)
-- [3. Геймплей: Стратегический уровень](docs/gameplay/README.md)
-- [4. Геймплей: Тактический уровень](docs/gameplay/README.md)
-- [5. Структура игровых режимов](docs/modes/README.md)
-- [6. Арт-направление](docs/art/README.md)
-- [7. Дорожная карта](docs/roadmap/README.md)
-- [8. Нарративный дизайн](docs/narrative/README.md)
+- [1. Концепция и ядро игры](/docs/concept/README.md)
+- [2. Вселенная и сеттинг](/docs/lore/README.md)
+- [3. Геймплей: Стратегический уровень](/docs/gameplay/README.md)
+- [4. Геймплей: Тактический уровень](/docs/gameplay/README.md)
+- [5. Структура игровых режимов](/docs/modes/README.md)
+- [6. Арт-направление](/docs/art/README.md)
+- [7. Дорожная карта](/docs/roadmap/README.md)
+- [8. Нарративный дизайн](/docs/narrative/README.md)
 
 ## Быстрые ссылки
-- [Последние изменения](CHANGELOG.md)
-- [Глоссарий терминов](GLOSSARY.md)
-- [Визуальные референсы](static/references/)
+- [Последние изменения](/CHANGELOG.md)
+- [Глоссарий терминов](/GLOSSARY.md)
+- [Визуальные референсы](/static/references/)
