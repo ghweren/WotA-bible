@@ -1,0 +1,40 @@
+name: Export to PDF
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: |
+          npm install -g docsify-cli
+          npm install -g markdown-pdf
+      
+      - name: Generate PDF
+        run: |
+          # Собираем все markdown файлы в один
+          find . -name "*.md" -type f | sort > filelist.txt
+          while IFS= read -r file; do
+            echo "# $file" >> combined.md
+            cat "$file" >> combined.md
+            echo -e "\n\n" >> combined.md
+          done < filelist.txt
+          
+          # Конвертируем в PDF
+          markdown-pdf combined.md -o project-bible.pdf
+          
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: project-bible-pdf
+          path: project-bible.pdf
