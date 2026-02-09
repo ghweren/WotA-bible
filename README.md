@@ -6,8 +6,8 @@
 
 - [1. Концепция и ядро игры](docs/concept/README.md)
 - [2. Вселенная и сеттинг](docs/lore/README.md)
-- [3. Геймплей: Стратегический уровень](docs/gameplay/strategy/README.md)
-- [4. Геймплей: Тактический уровень](docs/gameplay/tactical/README.md)
+- [3. Геймплей: Стратегический уровень](docs/gameplay/README.md)
+- [4. Геймплей: Тактический уровень](docs/gameplay/README.md)
 - [5. Структура игровых режимов](docs/modes/README.md)
 - [6. Арт-направление](docs/art/README.md)
 - [7. Дорожная карта](docs/roadmap/README.md)
