@@ -12,13 +12,28 @@
   <script>
     window.$docsify = {
       name: 'Библия проекта',
-      repo: 'ваш-username/game-project-bible',
+      repo: 'ghweren/WotA-bible',
       loadSidebar: true,
       subMaxLevel: 3,
       search: {
         placeholder: 'Поиск по документации'
       },
-      formatUpdated: '{MM}/{DD} {HH}:{mm}',
+      formatUpdated: '{YYYY}-{MM}-{DD} {HH}:{mm}:{ss}',
+      plugins: [
+      function(hook, vm) {
+        hook.ready(function() {
+          // Добавляем дату в сайдбар или куда нужно
+          const dateEl = document.querySelector('#global-date');
+          if (dateEl) {
+            dateEl.innerHTML = new Date().toLocaleDateString('ru-RU', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+          }
+        });
+      }
+    ]
     }
   </script>
   <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
