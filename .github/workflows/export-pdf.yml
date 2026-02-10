@@ -10,28 +10,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install dependencies
+      - name: Install pandoc and LaTeX
         run: |
-          npm install -g docsify-cli
-          npm install -g markdown-pdf
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
       
-      - name: Generate PDF
+      - name: Generate PDF with pandoc
         run: |
           # Собираем все markdown файлы в один
           find . -name "*.md" -type f | sort > filelist.txt
+          
+          # Создаем общий файл с правильной структурой
+          cat > combined.md << 'EOF'
+          % Project Documentation
+          % Your Name
+          % \today
+          
+          \newpage
+          
+          EOF
+          
           while IFS= read -r file; do
-            echo "# $file" >> combined.md
+            echo "# File: $file" >> combined.md
+            echo "" >> combined.md
             cat "$file" >> combined.md
-            echo -e "\n\n" >> combined.md
+            echo -e "\n\n\\newpage\n" >> combined.md
           done < filelist.txt
           
-          # Конвертируем в PDF
-          markdown-pdf combined.md -o project-bible.pdf
+          # Конвертируем в PDF с помощью pandoc
+          pandoc combined.md -o project-bible.pdf \
+            --pdf-engine=xelatex \
+            -V geometry:margin=2cm \
+            -V colorlinks=true \
+            -V linkcolor=blue \
+            -V urlcolor=blue \
+            --toc \
+            --toc-depth=3
+          
+      - name: Verify PDF generation
+        run: |
+          if [ ! -f "project-bible.pdf" ]; then
+            echo "PDF file was not generated!"
+            exit 1
+          fi
+          echo "PDF generated successfully. Size: $(stat -c%s project-bible.pdf) bytes"
           
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v4
