@@ -17,24 +17,28 @@ jobs:
       
       - name: Generate PDF with pandoc
         run: |
-          # Собираем все markdown файлы в один
+          # Собираем все markdown файлы в один, очищая от YAML frontmatter
           find . -name "*.md" -type f | sort > filelist.txt
           
-          # Создаем общий файл с правильной структурой
-          cat > combined.md << 'EOF'
-          % Project Documentation
-          % Your Name
-          % \today
-          
-          \newpage
-          
-          EOF
+          # Создаем общий файл с явным заголовком
+          echo "# Project Documentation" > combined.md
+          echo "" >> combined.md
+          echo "*Generated on $(date)*" >> combined.md
+          echo "" >> combined.md
+          echo "---" >> combined.md
+          echo "" >> combined.md
           
           while IFS= read -r file; do
-            echo "# File: $file" >> combined.md
+            echo "## File: $file" >> combined.md
             echo "" >> combined.md
-            cat "$file" >> combined.md
-            echo -e "\n\n\\newpage\n" >> combined.md
+            
+            # Удаляем YAML frontmatter (строки между --- и ---)
+            # и добавляем содержимое файла
+            awk '/^---$/ && ++count % 2 {next} count % 2 == 0' "$file" >> combined.md
+            
+            echo "" >> combined.md
+            echo "---" >> combined.md
+            echo "" >> combined.md
           done < filelist.txt
           
           # Конвертируем в PDF с помощью pandoc
@@ -45,12 +49,27 @@ jobs:
             -V linkcolor=blue \
             -V urlcolor=blue \
             --toc \
-            --toc-depth=3
+            --toc-depth=3 \
+            -M title="Project Documentation" \
+            -M author="Automated Export"
+          
+          # Альтернативная команда с явным отключением YAML метаданных
+          if [ ! -f "project-bible.pdf" ]; then
+            echo "Trying alternative approach..."
+            pandoc combined.md -o project-bible.pdf \
+              --standalone \
+              --pdf-engine=xelatex \
+              -V geometry:margin=2cm \
+              --metadata title="Project Documentation" \
+              --metadata author="Automated Export"
+          fi
           
       - name: Verify PDF generation
         run: |
           if [ ! -f "project-bible.pdf" ]; then
             echo "PDF file was not generated!"
+            echo "Checking combined.md content..."
+            head -20 combined.md
             exit 1
           fi
           echo "PDF generated successfully. Size: $(stat -c%s project-bible.pdf) bytes"
