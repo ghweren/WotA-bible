@@ -10,72 +10,303 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install pandoc and LaTeX
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
+          sudo apt-get install -y pandoc texlive-xetex texlive-fonts-recommended texlive-fonts-extra fonts-liberation wkhtmltopdf
+          # Устанавливаем Node.js для markdown-it
+          npm install markdown-it fs-extra
       
-      - name: Generate PDF with pandoc
+      - name: Generate PDF
         run: |
-          # Собираем все markdown файлы в один, очищая от YAML frontmatter
-          find . -name "*.md" -type f | sort > filelist.txt
+          # Создаем скрипт для генерации HTML из всех markdown файлов
+          cat > generate-html.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const MarkdownIt = require('markdown-it');
           
-          # Создаем общий файл с явным заголовком
-          echo "# Project Documentation" > combined.md
-          echo "" >> combined.md
-          echo "*Generated on $(date)*" >> combined.md
-          echo "" >> combined.md
-          echo "---" >> combined.md
-          echo "" >> combined.md
+          const md = new MarkdownIt({
+            html: true,
+            linkify: true,
+            typographer: true
+          });
           
-          while IFS= read -r file; do
-            echo "## File: $file" >> combined.md
-            echo "" >> combined.md
+          // Функция для рекурсивного поиска markdown файлов
+          function findMarkdownFiles(dir, fileList = []) {
+            const items = fs.readdirSync(dir);
             
-            # Удаляем YAML frontmatter (строки между --- и ---)
-            # и добавляем содержимое файла
-            awk '/^---$/ && ++count % 2 {next} count % 2 == 0' "$file" >> combined.md
+            for (const item of items) {
+              const fullPath = path.join(dir, item);
+              const stat = fs.statSync(fullPath);
+              
+              // Пропускаем .git и node_modules
+              if (item === '.git' || item === 'node_modules' || item === '.github') {
+                continue;
+              }
+              
+              if (stat.isDirectory()) {
+                findMarkdownFiles(fullPath, fileList);
+              } else if (item.endsWith('.md')) {
+                fileList.push(fullPath);
+              }
+            }
+            return fileList;
+          }
+          
+          // Находим все markdown файлы
+          const allFiles = findMarkdownFiles('.');
+          
+          // Сортируем по пути для консистентности
+          allFiles.sort();
+          
+          // Функция для очистки YAML frontmatter
+          function removeYamlFrontmatter(content) {
+            if (content.startsWith('---\n')) {
+              const lines = content.split('\n');
+              let inFrontmatter = false;
+              let frontmatterEnd = 0;
+              
+              for (let i = 0; i < lines.length; i++) {
+                if (lines[i] === '---') {
+                  if (!inFrontmatter) {
+                    inFrontmatter = true;
+                  } else {
+                    frontmatterEnd = i;
+                    break;
+                  }
+                }
+              }
+              
+              if (frontmatterEnd > 0) {
+                return lines.slice(frontmatterEnd + 1).join('\n');
+              }
+            }
+            return content;
+          }
+          
+          // Создаем HTML документ
+          let html = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="UTF-8">
+              <title>WotA Project Bible</title>
+              <style>
+                  body {
+                      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                      line-height: 1.6;
+                      margin: 2cm;
+                      color: #333;
+                  }
+                  h1 {
+                      color: #2c3e50;
+                      border-bottom: 3px solid #3498db;
+                      padding-bottom: 10px;
+                  }
+                  h2 {
+                      color: #34495e;
+                      border-bottom: 1px solid #bdc3c7;
+                      padding-bottom: 5px;
+                      margin-top: 30px;
+                  }
+                  h3 {
+                      color: #46637f;
+                  }
+                  .file-header {
+                      background: linear-gradient(to right, #f8f9fa, #e9ecef);
+                      padding: 15px;
+                      border-left: 5px solid #3498db;
+                      margin: 25px 0;
+                      border-radius: 0 5px 5px 0;
+                  }
+                  .file-path {
+                      font-family: 'Courier New', monospace;
+                      font-size: 0.9em;
+                      color: #7f8c8d;
+                      margin-bottom: 10px;
+                  }
+                  pre {
+                      background-color: #f8f9fa;
+                      border: 1px solid #dee2e6;
+                      border-radius: 4px;
+                      padding: 15px;
+                      overflow-x: auto;
+                  }
+                  code {
+                      background-color: #f8f9fa;
+                      padding: 2px 6px;
+                      border-radius: 3px;
+                      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+                  }
+                  blockquote {
+                      border-left: 4px solid #3498db;
+                      margin: 20px 0;
+                      padding: 10px 20px;
+                      background-color: #f8f9fa;
+                  }
+                  table {
+                      border-collapse: collapse;
+                      width: 100%;
+                      margin: 20px 0;
+                  }
+                  th, td {
+                      border: 1px solid #dee2e6;
+                      padding: 8px 12px;
+                      text-align: left;
+                  }
+                  th {
+                      background-color: #f8f9fa;
+                      font-weight: bold;
+                  }
+                  tr:nth-child(even) {
+                      background-color: #f8f9fa;
+                  }
+                  .toc {
+                      background-color: #f8f9fa;
+                      padding: 20px;
+                      border-radius: 5px;
+                      margin-bottom: 30px;
+                  }
+                  .toc ul {
+                      list-style-type: none;
+                      padding-left: 20px;
+                  }
+                  .toc li {
+                      margin: 5px 0;
+                  }
+                  .page-break {
+                      page-break-after: always;
+                  }
+                  hr {
+                      border: none;
+                      border-top: 2px dashed #bdc3c7;
+                      margin: 40px 0;
+                  }
+              </style>
+          </head>
+          <body>
+              <h1>WotA Project Bible</h1>
+              <p><em>Complete project documentation - Generated on ${new Date().toLocaleDateString()}</em></p>
+              
+              <div class="toc">
+                  <h2>Table of Contents</h2>
+                  <ul>
+          `;
+          
+          // Добавляем оглавление
+          allFiles.forEach((file, index) => {
+            const relativePath = file.replace(/^\.\//, '');
+            html += `<li><a href="#file-${index}">${relativePath}</a></li>`;
+          });
+          
+          html += `
+                  </ul>
+              </div>
+              
+              <hr>
+          `;
+          
+          // Обрабатываем каждый файл
+          allFiles.forEach((file, index) => {
+            console.log(`Processing: ${file}`);
             
-            echo "" >> combined.md
-            echo "---" >> combined.md
-            echo "" >> combined.md
-          done < filelist.txt
+            try {
+              const content = fs.readFileSync(file, 'utf8');
+              const cleanContent = removeYamlFrontmatter(content);
+              const relativePath = file.replace(/^\.\//, '');
+              
+              html += `
+              <div class="file-header">
+                  <div class="file-path">${relativePath}</div>
+                  <h2 id="file-${index}">${path.basename(file, '.md')}</h2>
+              </div>
+              
+              ${md.render(cleanContent)}
+              `;
+              
+              // Добавляем разделитель между файлами, но не после последнего
+              if (index < allFiles.length - 1) {
+                html += '<hr>';
+              }
+              
+            } catch (error) {
+              console.error(`Error processing ${file}:`, error.message);
+              html += `<div class="file-header"><h2>Error processing: ${file}</h2><p>${error.message}</p></div>`;
+            }
+          });
           
-          # Конвертируем в PDF с помощью pandoc
-          pandoc combined.md -o project-bible.pdf \
-            --pdf-engine=xelatex \
-            -V geometry:margin=2cm \
-            -V colorlinks=true \
-            -V linkcolor=blue \
-            -V urlcolor=blue \
-            --toc \
-            --toc-depth=3 \
-            -M title="Project Documentation" \
-            -M author="Automated Export"
+          html += `
+          </body>
+          </html>
+          `;
           
-          # Альтернативная команда с явным отключением YAML метаданных
-          if [ ! -f "project-bible.pdf" ]; then
-            echo "Trying alternative approach..."
-            pandoc combined.md -o project-bible.pdf \
-              --standalone \
+          // Сохраняем HTML
+          fs.writeFileSync('combined.html', html);
+          console.log(`Generated HTML with ${allFiles.length} files`);
+          EOF
+          
+          # Запускаем генерацию HTML
+          node generate-html.js
+          
+          # Конвертируем HTML в PDF с помощью wkhtmltopdf
+          echo "Converting HTML to PDF..."
+          wkhtmltopdf \
+            --page-size A4 \
+            --margin-top 20mm \
+            --margin-bottom 20mm \
+            --margin-left 20mm \
+            --margin-right 20mm \
+            --header-center "WotA Project Bible" \
+            --header-font-size 10 \
+            --header-spacing 5 \
+            --footer-center "Page [page] of [topage]" \
+            --footer-font-size 10 \
+            --footer-spacing 5 \
+            --enable-local-file-access \
+            combined.html project-bible.pdf
+          
+          # Альтернативный вариант: используем pandoc если wkhtmltopdf не работает
+          if [ ! -f "project-bible.pdf" ] || [ ! -s "project-bible.pdf" ]; then
+            echo "Trying pandoc as fallback..."
+            # Сначала конвертируем HTML в markdown для pandoc
+            pandoc combined.html -o combined-clean.md
+            pandoc combined-clean.md -o project-bible.pdf \
               --pdf-engine=xelatex \
               -V geometry:margin=2cm \
-              --metadata title="Project Documentation" \
-              --metadata author="Automated Export"
+              -V mainfont="DejaVu Sans" \
+              --toc \
+              --toc-depth=3 \
+              -M title="WotA Project Bible"
           fi
-          
+      
       - name: Verify PDF generation
         run: |
           if [ ! -f "project-bible.pdf" ]; then
-            echo "PDF file was not generated!"
-            echo "Checking combined.md content..."
-            head -20 combined.md
+            echo "❌ PDF file was not generated!"
+            echo "Checking generated files..."
+            ls -la *.html *.pdf || true
             exit 1
           fi
-          echo "PDF generated successfully. Size: $(stat -c%s project-bible.pdf) bytes"
           
+          PDF_SIZE=$(stat -c%s project-bible.pdf)
+          echo "✅ PDF generated successfully"
+          echo "📄 File size: $PDF_SIZE bytes"
+          echo "📄 Number of pages: $(pdfinfo project-bible.pdf 2>/dev/null | grep 'Pages:' | awk '{print $2}' || echo 'unknown')"
+          
+          # Проверяем что PDF не пустой
+          if [ "$PDF_SIZE" -lt 1000 ]; then
+            echo "⚠️  Warning: PDF file is very small ($PDF_SIZE bytes), might be empty"
+          fi
+      
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v4
         with:
-          name: project-bible-pdf
+          name: wota-project-bible
           path: project-bible.pdf
+      
+      - name: Upload HTML for debugging
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-debug
+          path: combined.html
